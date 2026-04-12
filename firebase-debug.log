@@ -1,0 +1,22 @@
+[debug] [2026-04-11T06:09:47.262Z] ----------------------------------------------------------------------
+[debug] [2026-04-11T06:09:47.266Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Laya Myadam\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2026-04-11T06:09:47.267Z] CLI Version:   15.14.0
+[debug] [2026-04-11T06:09:47.267Z] Platform:      win32
+[debug] [2026-04-11T06:09:47.267Z] Node Version:  v22.18.0
+[debug] [2026-04-11T06:09:47.267Z] Time:          Sat Apr 11 2026 01:09:47 GMT-0500 (Central Daylight Time)
+[debug] [2026-04-11T06:09:47.268Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-11T06:09:47.270Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\Users\Laya Myadam\ai-banking-platform
+
+[debug] [2026-04-11T06:09:48.985Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-04-11T06:09:48.985Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
