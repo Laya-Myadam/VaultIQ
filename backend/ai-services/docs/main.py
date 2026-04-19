@@ -4,7 +4,7 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import FakeEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
@@ -32,9 +32,8 @@ llm = ChatGroq(
     temperature=0.1
 )
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+embeddings = FakeEmbeddings(size=384)
+
 
 doc_stores = {}
 
@@ -64,7 +63,9 @@ def get_summary(text: str) -> dict:
     system = """You are a senior banking document analyst AI. 
 You specialize in analyzing contracts, loan agreements, compliance documents, and internal banking policies.
 Always respond in clear, plain English that a non-lawyer can understand.
-Be specific, structured, and highlight anything that needs attention."""
+Be specific, structured, and highlight anything that needs attention.
+Never show your reasoning process, analysis steps, or meta-commentary.
+Go straight to the answer — no 'analyzing content', 'identifying sections', or 'let me break this down'."""
 
     summary_prompt = f"""Analyze this banking document and provide:
 

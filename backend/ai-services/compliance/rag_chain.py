@@ -1,7 +1,7 @@
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import FakeEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
@@ -88,9 +88,8 @@ def get_vectorstore():
     if vectorstore is not None:
         return vectorstore
 
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    embeddings = FakeEmbeddings(size=384)
+
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = splitter.create_documents([REGULATIONS])
@@ -141,15 +140,25 @@ Provide a clear answer with:
     return chain
 
 def check_compliance(question: str) -> dict:
-    chain = get_rag_chain()
-    answer = chain.invoke(question)
+    llm = get_llm()
+    prompt = f"""You are a US banking compliance officer AI with deep knowledge of US banking regulations including BSA, AML, KYC, SAR, CTR, OFAC, GLBA, FCRA, TILA, CRA.
 
-    not_found = "outside the current regulatory knowledge base" in answer.lower()
+Answer this compliance question accurately and specifically:
+{question}
 
+Provide:
+1. Direct answer with specific requirements
+2. Relevant regulation reference
+3. Required action if any
+
+If truly outside banking compliance scope, say so."""
+
+    response = llm.invoke([HumanMessage(content=prompt)])
+    not_found = "outside" in response.content.lower() and "knowledge" in response.content.lower()
     return {
         "question": question,
-        "answer": answer,
-        "status": "not_found" if not_found else "requires_action" if "must" in answer.lower() else "compliant"
+        "answer": response.content,
+        "status": "not_found" if not_found else "requires_action" if "must" in response.content.lower() else "compliant"
     }
 
 def check_transaction_compliance(transaction: dict) -> dict:

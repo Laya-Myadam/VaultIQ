@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 
-const CREDIT_URL = "http://localhost:8002";
+const CREDIT_URL = process.env.CREDIT_URL || "http://localhost:8002";
 
 router.post("/evaluate", async (req, res) => {
   try {

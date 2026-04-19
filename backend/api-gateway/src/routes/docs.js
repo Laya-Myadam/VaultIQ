@@ -4,7 +4,7 @@ const multer = require("multer");
 const FormData = require("form-data");
 const router = express.Router();
 
-const DOCS_URL = "http://localhost:8005";
+const DOCS_URL = process.env.DOCS_URL || "http://localhost:8005";
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/upload", upload.single("file"), async (req, res) => {

@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 
-const RISK_URL = "http://localhost:8004";
+const RISK_URL = process.env.RISK_URL || "http://localhost:8004";
 
 router.post("/analyze", async (req, res) => {
   try {

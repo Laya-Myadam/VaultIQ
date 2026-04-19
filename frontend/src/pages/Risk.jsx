@@ -1,146 +1,293 @@
-import { useState } from "react";
-import { Activity, Loader2, CheckCircle, XCircle } from "lucide-react";
-import PageLayout from "../components/ui/PageLayout";
-import { card, Field, Input, Button, EmptyState, SectionTitle } from "../components/ui/FormCard";
-import { api } from "../services/api";
+import { useState } from 'react';
+import { Activity, Zap, TrendingDown, AlertTriangle, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
+import PageLayout from '../components/ui/PageLayout';
+import { analyzeRisk } from '../services/api';
 
-const defaultForm = {
-  total_assets: "", loan_portfolio: "", npa_amount: "", tier1_capital: "",
-  total_capital: "", cash_reserves: "", investment_securities: "", deposits: "",
-};
+const Field = ({ label, hint, children }) => (
+  <div style={{ marginBottom: 11 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+      <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase' }}>{label}</label>
+      {hint && <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{hint}</span>}
+    </div>
+    {children}
+  </div>
+);
 
-const fields = [
-  { label: "Total Assets ($)", name: "total_assets", placeholder: "e.g. 5000000000" },
-  { label: "Loan Portfolio ($)", name: "loan_portfolio", placeholder: "e.g. 3000000000" },
-  { label: "NPA Amount ($)", name: "npa_amount", placeholder: "e.g. 210000000" },
-  { label: "Tier 1 Capital ($)", name: "tier1_capital", placeholder: "e.g. 400000000" },
-  { label: "Total Capital ($)", name: "total_capital", placeholder: "e.g. 500000000" },
-  { label: "Cash Reserves ($)", name: "cash_reserves", placeholder: "e.g. 300000000" },
-  { label: "Investment Securities ($)", name: "investment_securities", placeholder: "e.g. 800000000" },
-  { label: "Total Deposits ($)", name: "deposits", placeholder: "e.g. 3800000000" },
+const inputStyle = (focused) => ({
+  width: '100%',
+  background: focused ? 'var(--bg3)' : 'var(--bg)',
+  border: `1px solid ${focused ? 'var(--orange)' : 'var(--border)'}`,
+  borderRadius: 7, padding: '8px 12px',
+  color: 'var(--text)', fontSize: 13,
+  fontFamily: 'var(--mono)', outline: 'none', transition: 'all 0.15s',
+});
+
+const fmtPct = v => v != null ? `${Number(v).toFixed(2)}%` : 'N/A';
+const fmtScore = v => v != null ? Number(v).toFixed(1) : 'N/A';
+
+// Scenario key from backend stress_results array → display name
+const SCENARIO_META = [
+  { key: 'mild_recession',       label: 'Mild Recession',         color: 'var(--amber)' },
+  { key: 'severe_recession',     label: 'Severe Recession',       color: 'var(--red)' },
+  { key: 'interest_rate_shock',  label: 'Rate Shock (+300bps)',   color: 'var(--orange)' },
+  { key: 'cyber_attack',         label: 'Cyber Attack',           color: 'var(--indigo)' },
 ];
 
-const riskCfg = {
-  "LOW RISK":      { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', bar: '#22c55e' },
-  "MODERATE RISK": { bg: '#fffbeb', border: '#fde68a', color: '#d97706', bar: '#f59e0b' },
-  "HIGH RISK":     { bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', bar: '#f97316' },
-  "CRITICAL RISK": { bg: '#fef2f2', border: '#fecaca', color: '#b91c1c', bar: '#ef4444' },
+const FIELDS = [
+  { key: 'total_assets',          label: 'Total Assets',          placeholder: '5000000000' },
+  { key: 'loan_portfolio',        label: 'Loan Portfolio',        placeholder: '3000000000' },
+  { key: 'npa_amount',            label: 'Non-Performing Assets', placeholder: '210000000' },
+  { key: 'tier1_capital',         label: 'Tier 1 Capital',        placeholder: '400000000' },
+  { key: 'total_capital',         label: 'Total Capital',         placeholder: '500000000' },
+  { key: 'cash_reserves',         label: 'Cash Reserves',         placeholder: '300000000' },
+  { key: 'investment_securities', label: 'Investment Securities', placeholder: '800000000' },
+  { key: 'total_deposits',        label: 'Total Deposits',        placeholder: '4000000000' },
+];
+
+const RatioRow = ({ label, value, threshold, higherBad }) => {
+  const num = parseFloat(value);
+  const bad = higherBad ? num > threshold : num < threshold;
+  const color = isNaN(num) ? 'var(--text3)' : bad ? 'var(--red)' : 'var(--green)';
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, fontFamily: 'var(--mono)', fontWeight: 500, color }}>{fmtPct(value)}</span>
+        {!isNaN(num) && (
+          bad
+            ? <AlertTriangle size={11} color="var(--red)" />
+            : <CheckCircle size={11} color="var(--green)" />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const StressCard = ({ data, index }) => {
+  const meta = SCENARIO_META[index] || { label: 'Scenario', color: 'var(--text3)' };
+  // backend returns { scenario, description, stressed_metrics:{}, regulatory_breaches:[], passed }
+  const breaches = data?.regulatory_breaches || [];
+  const pass = data?.passed ?? breaches.length === 0;
+  const metrics = data?.stressed_metrics || {};
+  return (
+    <div style={{
+      background: 'var(--bg2)', border: `1px solid ${pass ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)'}`,
+      borderRadius: 'var(--radius-lg)', overflow: 'hidden', animation: 'fade-in 0.35s ease forwards',
+    }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: `${meta.color}10` }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12, color: 'var(--text)', flex: 1 }}>{meta.label}</span>
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', padding: '2px 7px', borderRadius: 4,
+          background: pass ? 'var(--green-dim)' : 'var(--red-dim)',
+          color: pass ? 'var(--green)' : 'var(--red)',
+          border: `1px solid ${pass ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}`,
+        }}>{pass ? 'PASS' : 'FAIL'}</span>
+      </div>
+      <div style={{ padding: '10px 14px' }}>
+        {/* stressed_metrics: npa_ratio, tier1_capital_ratio, liquidity_ratio */}
+        {Object.entries(metrics).map(([k, v]) => (
+          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ color: 'var(--text3)' }}>{k.replace(/_/g, ' ')}</span>
+            <span style={{ fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{Number(v).toFixed(2)}%</span>
+          </div>
+        ))}
+        {data?.description && (
+          <div style={{ fontSize: 10.5, color: 'var(--text3)', marginTop: 6, lineHeight: 1.5 }}>{data.description}</div>
+        )}
+        {breaches.length > 0 && (
+          <div style={{ marginTop: 7, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+            {breaches.map((b, i) => (
+              <div key={i} style={{ fontSize: 10.5, color: 'var(--red)', padding: '2px 0', display: 'flex', gap: 5, lineHeight: 1.5 }}>
+                <span style={{ flexShrink: 0 }}>⚠</span><span>{b}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default function Risk() {
-  const [form, setForm] = useState(defaultForm);
-  const [result, setResult] = useState(null);
+  const [form, setForm] = useState(Object.fromEntries(FIELDS.map(f => [f.key, ''])));
+  const [focused, setFocused] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const set = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    setLoading(true); setError(null); setResult(null);
+    setLoading(true);
+    setError(null);
+    setResult(null);
     try {
-      const payload = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, parseFloat(v)]));
-      const data = await api.risk.analyze(payload);
+      // Map frontend keys → Portfolio fields backend expects
+      const payload = {
+        total_assets:          parseFloat(form.total_assets) || 0,
+        loan_portfolio:        parseFloat(form.loan_portfolio) || 0,
+        npa_amount:            parseFloat(form.npa_amount) || 0,
+        tier1_capital:         parseFloat(form.tier1_capital) || 0,
+        total_capital:         parseFloat(form.total_capital) || 0,
+        cash_reserves:         parseFloat(form.cash_reserves) || 0,
+        investment_securities: parseFloat(form.investment_securities) || 0,
+        total_deposits:        parseFloat(form.total_deposits) || 0,
+      };
+      const data = await analyzeRisk(payload);
       setResult(data);
-    } catch { setError("Failed to connect to risk service."); }
-    finally { setLoading(false); }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const cfg = result ? (riskCfg[result.risk_score.rating] || riskCfg["MODERATE RISK"]) : null;
+  const riskColor = result?.risk_score?.rating === 'Low' ? 'var(--green)'
+    : result?.risk_score?.rating === 'Medium' ? 'var(--amber)'
+    : result?.risk_score?.rating === 'High' ? 'var(--orange)'
+    : 'var(--red)';
 
   return (
-    <PageLayout title="Risk Management" subtitle="Run portfolio stress tests and get AI risk recommendations using LangGraph">
-      <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 20, alignItems: 'start' }}>
+    <PageLayout title="Risk Management" subtitle="Portfolio stress testing · 4 AI scenarios · LangGraph agent">
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 14, maxWidth: 1200 }}>
 
-        <div style={card}>
-          <SectionTitle>Portfolio Data</SectionTitle>
-          {fields.map(f => (
-            <Field key={f.name} label={f.label}>
-              <Input name={f.name} type="number" value={form[f.name]} onChange={set} placeholder={f.placeholder} />
-            </Field>
-          ))}
-          <Button loading={loading} onClick={submit}>
-            {loading ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Running stress tests...</> : '→ Run Risk Analysis'}
-          </Button>
-          {error && <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', marginTop: 10 }}>{error}</p>}
+        {/* Input */}
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', alignSelf: 'start' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={14} color="var(--orange)" strokeWidth={2} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13 }}>Portfolio Data</span>
+          </div>
+          <div style={{ padding: 16 }}>
+            {FIELDS.map(({ key, label, placeholder }) => (
+              <Field key={key} label={label} hint="$">
+                <input
+                  type="number"
+                  value={form[key]}
+                  placeholder={placeholder}
+                  onChange={e => set(key, e.target.value)}
+                  onFocus={() => setFocused(key)}
+                  onBlur={() => setFocused(null)}
+                  style={inputStyle(focused === key)}
+                />
+              </Field>
+            ))}
+            <button onClick={submit} disabled={loading} style={{
+              width: '100%', padding: '11px',
+              background: loading ? 'var(--bg4)' : 'var(--orange)',
+              color: loading ? 'var(--text3)' : '#000',
+              border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              fontFamily: 'var(--font-display)', transition: 'all 0.15s', marginTop: 6,
+            }}>
+              {loading
+                ? <><span style={{ animation: 'pulse-dot 1s infinite' }}>●</span> Running scenarios...</>
+                : <><Zap size={14} /> Run 4 Stress Scenarios</>
+              }
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {!result && !loading && <div style={card}><EmptyState icon={Activity} text="Enter portfolio data to run 4 AI stress test scenarios" /></div>}
-          {loading && (
-            <div style={{ ...card, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
-              <Loader2 size={28} color="#6366f1" style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
-              <p style={{ fontSize: 13, color: '#94a3b8' }}>Running 4 stress test scenarios...</p>
+        {/* Results */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {!result && !loading && !error && (
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--text3)', minHeight: 280, justifyContent: 'center' }}>
+              <Activity size={36} strokeWidth={1} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text2)', marginBottom: 4 }}>Enter portfolio data to run stress tests</div>
+                <div style={{ fontSize: 12 }}>Mild recession · Severe recession · Rate shock · Cyber attack</div>
+              </div>
             </div>
           )}
-          {result && cfg && (
+
+          {loading && (
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, minHeight: 280 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid var(--border)', borderTop: '2px solid var(--orange)', animation: 'spin 0.9s linear infinite' }} />
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Simulating 4 stress scenarios...</div>
+            </div>
+          )}
+
+          {error && (
+            <div style={{ background: 'var(--bg2)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-xl)', padding: 24, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <XCircle size={18} color="var(--red)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)', marginBottom: 4 }}>Risk analysis failed</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.6 }}>{error}</div>
+              </div>
+            </div>
+          )}
+
+          {result && !loading && (
             <>
-              <div style={{ ...card, background: cfg.bg, border: `1.5px solid ${cfg.border}` }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: cfg.color, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>Overall Risk Rating</p>
-                    <p style={{ fontSize: 44, fontWeight: 800, color: cfg.color, letterSpacing: '-1.5px', lineHeight: 1 }}>
-                      {result.risk_score.score}<span style={{ fontSize: 18, fontWeight: 500 }}>/100</span>
-                    </p>
+              {/* Top row: risk score + ratios */}
+              <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 12 }}>
+
+                {/* Risk score */}
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase' }}>Risk Score</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 48, color: riskColor, lineHeight: 1 }}>
+                    {fmtScore(result.risk_score?.score)}
                   </div>
-                  <div style={{ padding: '6px 16px', borderRadius: 99, background: 'rgba(255,255,255,0.8)', border: `1px solid ${cfg.border}` }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: cfg.color }}>{result.risk_score.rating}</span>
+                  <div style={{ fontSize: 10, color: 'var(--text3)' }}>/100</div>
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '1px', padding: '3px 12px', borderRadius: 20,
+                    background: `${riskColor}18`, color: riskColor, border: `1px solid ${riskColor}30`,
+                  }}>
+                    {result.risk_score?.rating?.toUpperCase() || 'N/A'} RISK
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  {Object.entries(result.ratios).slice(0, 3).map(([k, v]) => (
-                    <div key={k} style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 14px' }}>
-                      <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>{k.replace(/_/g, ' ')}</p>
-                      <p style={{ fontSize: 16, fontWeight: 800, color: cfg.color }}>{v}%</p>
-                    </div>
-                  ))}
+
+                {/* Ratios */}
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 6 }}>Portfolio Ratios</div>
+                  {result.ratios && <>
+                    <RatioRow label="NPA Ratio"           value={result.ratios.npa_ratio}           threshold={5}  higherBad />
+                    <RatioRow label="Tier 1 Capital"      value={result.ratios.tier1_capital_ratio} threshold={8}  higherBad={false} />
+                    <RatioRow label="Total Capital Ratio" value={result.ratios.total_capital_ratio} threshold={10} higherBad={false} />
+                    <RatioRow label="Liquidity Ratio"     value={result.ratios.liquidity_ratio}     threshold={20} higherBad={false} />
+                    <RatioRow label="Loan/Deposit Ratio"  value={result.ratios.loan_to_deposit_ratio} threshold={85} higherBad />
+                  </>}
                 </div>
               </div>
 
-              <div style={card}>
-                <SectionTitle>Stress Test Scenarios</SectionTitle>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {result.stress_tests.map(test => (
-                    <div key={test.scenario} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12, background: test.passed ? '#f0fdf4' : '#fef2f2', border: `1px solid ${test.passed ? '#bbf7d0' : '#fecaca'}` }}>
-                      <div style={{ marginTop: 2 }}>
-                        {test.passed ? <CheckCircle size={16} color="#22c55e" /> : <XCircle size={16} color="#ef4444" />}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 3, textTransform: 'capitalize' }}>{test.scenario.replace(/_/g, ' ')}</p>
-                        <p style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>{test.description}</p>
-                        {test.regulatory_breaches?.length > 0 && (
-                          <div style={{ marginTop: 8 }}>
-                            {test.regulatory_breaches.map((b, i) => (
-                              <p key={i} style={{ fontSize: 11, color: '#dc2626', fontWeight: 500, marginTop: 3 }}>• {b}</p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {/* Stress scenarios 2x2 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {(result.stress_tests || []).map((s, i) => (
+                  <StressCard key={i} data={s} index={i} />
+                ))}
               </div>
 
-              <div style={card}>
-                <SectionTitle>Recommendations</SectionTitle>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                  {result.recommendations.map((rec, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.4px', background: rec.priority === 'High' ? '#fef2f2' : rec.priority === 'Medium' ? '#fffbeb' : '#f0fdf4', color: rec.priority === 'High' ? '#dc2626' : rec.priority === 'Medium' ? '#d97706' : '#16a34a' }}>
-                        {rec.priority}
-                      </span>
-                      <p style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{rec.action}</p>
-                    </div>
-                  ))}
+              {/* Recommendations */}
+              {result.recommendations?.length > 0 && (
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>Recommendations</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {result.recommendations.map((r, i) => {
+                      const pcolor = r.priority === 'High' ? 'var(--red)' : r.priority === 'Medium' ? 'var(--amber)' : 'var(--green)';
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg3)', borderRadius: 7, borderLeft: `3px solid ${pcolor}` }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: pcolor, letterSpacing: '0.6px', minWidth: 40 }}>{r.priority?.toUpperCase()}</span>
+                          <span style={{ fontSize: 12.5, color: 'var(--text2)' }}>{r.action}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ background: '#f8fafc', borderRadius: 12, padding: '16px 18px', border: '1px solid #f1f5f9' }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>AI Analysis</p>
-                  <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.85, whiteSpace: 'pre-line' }}>{result.explanation}</p>
+              )}
+
+              {/* AI Explanation */}
+              {result.explanation && (
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 8 }}>AI Risk Analysis</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{result.explanation}</div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </PageLayout>
   );
 }

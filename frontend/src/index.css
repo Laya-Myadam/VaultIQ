@@ -1,8 +1,134 @@
-@import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
-* { font-family: 'Inter', sans-serif !important; -webkit-font-smoothing: antialiased; }
-body { background: #f4f6f9; margin: 0; }
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #EBF1FF;
+  --bg1:      #FFFFFF;
+  --bg2:      #FFFFFF;
+  --bg3:      #F4F7FF;
+  --bg4:      #E8EEFF;
+
+  --border:   rgba(79, 119, 220, 0.13);
+  --border2:  rgba(79, 119, 220, 0.22);
+  --border3:  rgba(79, 119, 220, 0.35);
+
+  --text:     #0B1D42;
+  --text2:    #3A5280;
+  --text3:    #879BBE;
+
+  --cyan:        #2563EB;
+  --cyan-dim:    rgba(37, 99, 235, 0.08);
+  --cyan-glow:   rgba(37, 99, 235, 0.18);
+
+  --green:       #059669;
+  --green-dim:   rgba(5, 150, 105, 0.09);
+  --amber:       #D97706;
+  --amber-dim:   rgba(217, 119, 6, 0.09);
+  --red:         #DC2626;
+  --red-dim:     rgba(220, 38, 38, 0.09);
+  --indigo:      #6D28D9;
+  --indigo-dim:  rgba(109, 40, 217, 0.09);
+
+  --font:         'Outfit', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+  --mono:         'DM Mono', monospace;
+
+  --radius:    8px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  --shadow-xs:   0 1px 4px rgba(11, 29, 66, 0.06);
+  --shadow:      0 4px 20px rgba(11, 29, 66, 0.08), 0 1px 4px rgba(11, 29, 66, 0.04);
+  --shadow-lg:   0 8px 40px rgba(11, 29, 66, 0.10), 0 2px 8px rgba(11, 29, 66, 0.05);
+  --shadow-blue: 0 4px 20px rgba(37, 99, 235, 0.20);
+
+  /* Legacy aliases used by dashboard card components */
+  --text-primary:   #0B1D42;
+  --text-secondary: #3A5280;
+  --text-muted:     #879BBE;
+  --bg-card:        #FFFFFF;
+  --bg-input:       #F4F7FF;
+  --border-dim:     rgba(79, 119, 220, 0.13);
+  --border-mid:     rgba(79, 119, 220, 0.22);
+  --accent:         #2563EB;
+  --accent-bg:      rgba(37, 99, 235, 0.08);
+  --accent-border:  rgba(37, 99, 235, 0.20);
+  --accent-glow:    rgba(37, 99, 235, 0.18);
+  --shine:          none;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle dot-grid texture on the page background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(79,119,220,0.13) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  z-index: 0;
+}
+#root { position: relative; z-index: 1; }
+
+/* Glass card class used by dashboard */
+.viq-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.viq-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(79,119,220,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(79,119,220,0.38); }
+
+input, select, textarea, button { font-family: var(--font); }
+a { text-decoration: none; color: inherit; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.82); }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes float-in {
+  from { opacity: 0; transform: translateX(-4px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.fade-in  { animation: fade-in  0.3s ease forwards; }
+.fade-up  { animation: fade-up  0.35s ease forwards; }
+.slide-in { animation: slide-in 0.25s ease forwards; }

@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 
-const COMPLIANCE_URL = "http://localhost:8003";
+const COMPLIANCE_URL = process.env.COMPLIANCE_URL || "http://localhost:8003";
 
 router.post("/query", async (req, res) => {
   try {

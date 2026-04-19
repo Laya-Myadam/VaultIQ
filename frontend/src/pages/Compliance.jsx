@@ -1,163 +1,330 @@
-import { useState } from "react";
-import { FileCheck, Loader2, Send, MessageSquare } from "lucide-react";
-import PageLayout from "../components/ui/PageLayout";
-import { card, Field, Input, Select, Button, SectionTitle } from "../components/ui/FormCard";
-import { api } from "../services/api";
+import { useState, useRef, useEffect } from 'react';
+import { Scale, Send, CheckCircle, AlertTriangle, ChevronRight, XCircle } from 'lucide-react';
+import PageLayout from '../components/ui/PageLayout';
+import { askCompliance, checkCompliance } from '../services/api';
 
-const statusCfg = {
-  compliant:       { bg: '#f0fdf4', color: '#15803d', label: 'Compliant' },
-  requires_action: { bg: '#fffbeb', color: '#d97706', label: 'Action Required' },
-  not_found:       { bg: '#f8fafc', color: '#64748b', label: 'Not Found' },
+const QUICK = [
+  'What are the SAR filing requirements?',
+  'When must a CTR be filed?',
+  'Explain OFAC screening obligations',
+  'What is KYC under CIP?',
+  'AML red flags for wire transfers',
+  'BSA record retention requirements',
+];
+
+const selectStyle = {
+  background: 'var(--bg)',
+  border: '1px solid var(--border)',
+  borderRadius: 7,
+  padding: '9px 12px',
+  color: 'var(--text)',
+  fontSize: 13,
+  outline: 'none',
+  cursor: 'pointer',
+  fontFamily: 'var(--mono)',
+  width: '100%',
 };
 
-const severityCfg = {
-  high:   { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
-  medium: { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
-  none:   { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-};
+function extractText(res) {
+  if (!res) return 'No response received.';
+  if (typeof res === 'string') return res;
+  // backend returns { question, answer, status }
+  if (res.answer) return res.answer;
+  if (res.response) return res.response;
+  if (res.result) return res.result;
+  if (res.message) return res.message;
+  return JSON.stringify(res, null, 2);
+}
 
 export default function Compliance() {
-  const [question, setQuestion] = useState("");
-  const [queryResult, setQueryResult] = useState(null);
-  const [queryLoading, setQueryLoading] = useState(false);
-  const [txn, setTxn] = useState({ amount: "", type: "digital", is_foreign: false });
-  const [txnResult, setTxnResult] = useState(null);
-  const [txnLoading, setTxnLoading] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [txForm, setTxForm] = useState({ amount: '', type: 'wire', foreign: 'false' });
+  const [txResult, setTxResult] = useState(null);
+  const [txLoading, setTxLoading] = useState(false);
+  const bottomRef = useRef(null);
 
-  const handleQuery = async () => {
-    if (!question.trim()) return;
-    setQueryLoading(true); setQueryResult(null);
-    try { const d = await api.compliance.query(question); setQueryResult(d); }
-    finally { setQueryLoading(false); }
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const ask = async (q) => {
+    const text = (q || input).trim();
+    if (!text) return;
+    setInput('');
+    setMessages(m => [...m, { role: 'user', text }]);
+    setLoading(true);
+    try {
+      const res = await askCompliance(text);
+      setMessages(m => [...m, { role: 'ai', text: extractText(res) }]);
+    } catch (e) {
+      setMessages(m => [...m, { role: 'error', text: e.message }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleTxn = async () => {
-    setTxnLoading(true); setTxnResult(null);
+  const checkTx = async () => {
+    if (!txForm.amount) return;
+    setTxLoading(true);
+    setTxResult(null);
     try {
-      const d = await api.compliance.checkTransaction({ amount: parseFloat(txn.amount), type: txn.type, is_foreign: txn.is_foreign });
-      setTxnResult(d);
-    } finally { setTxnLoading(false); }
+      const res = await checkCompliance({
+        amount: parseFloat(txForm.amount),
+        transaction_type: txForm.type,
+        is_foreign: txForm.foreign === 'true',
+      });
+      setTxResult(res);
+    } catch (e) {
+      setTxResult({ error: e.message });
+    } finally {
+      setTxLoading(false);
+    }
   };
 
   return (
-    <PageLayout title="Compliance RAG" subtitle="Ask regulatory questions or check transaction compliance using LangChain + ChromaDB">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <PageLayout title="Compliance Intelligence" subtitle="Regulatory Q&A · AML screening · BSA/OFAC · LangChain + ChromaDB">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14, height: 'calc(100vh - 110px)' }}>
 
-        <div style={card}>
-          <SectionTitle>Ask a Compliance Question</SectionTitle>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <MessageSquare size={15} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleQuery()}
-                placeholder="e.g. What are the SAR filing requirements?"
-                style={{
-                  width: '100%', padding: '11px 14px 11px 36px', borderRadius: 10,
-                  border: '1.5px solid #e8edf2', fontSize: 13, fontWeight: 500, color: '#0f172a',
-                  outline: 'none', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif', background: '#fafafa'
-                }}
-                onFocus={e => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
-                onBlur={e => { e.target.style.borderColor = '#e8edf2'; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
-            <button
-              onClick={handleQuery}
-              disabled={queryLoading}
+        {/* Chat Panel */}
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Scale size={14} color="var(--indigo)" strokeWidth={2} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13 }}>Regulatory Assistant</span>
+            <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', background: 'var(--indigo-dim)', color: 'var(--indigo)', border: '1px solid rgba(129,140,248,0.2)', padding: '1px 7px', borderRadius: 4 }}>RAG · Groq LLM</span>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {messages.length === 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 6 }}>
+                  Ask any question about US banking regulations — BSA, AML, KYC, SAR, CTR, OFAC:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {QUICK.map(q => (
+                    <button key={q} onClick={() => ask(q)} style={{
+                      background: 'var(--bg3)', border: '1px solid var(--border)',
+                      borderRadius: 20, padding: '5px 12px',
+                      fontSize: 11.5, color: 'var(--text2)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--indigo)'; e.currentTarget.style.color = 'var(--indigo)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text2)'; }}
+                    >
+                      <ChevronRight size={10} />{q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((m, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                gap: 10, animation: 'fade-in 0.25s ease forwards',
+              }}>
+                {m.role !== 'user' && (
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                    background: m.role === 'error' ? 'var(--red-dim)' : 'var(--indigo-dim)',
+                    border: `1px solid ${m.role === 'error' ? 'rgba(248,113,113,0.2)' : 'rgba(129,140,248,0.2)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: m.role === 'error' ? 'var(--red)' : 'var(--indigo)', marginTop: 2,
+                  }}>
+                    <Scale size={13} />
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: '80%',
+                  background: m.role === 'user' ? 'var(--indigo-dim)' : 'var(--bg3)',
+                  border: `1px solid ${m.role === 'user' ? 'rgba(129,140,248,0.2)' : 'var(--border)'}`,
+                  borderRadius: m.role === 'user' ? '12px 12px 4px 12px' : '4px 12px 12px 12px',
+                  padding: '10px 13px',
+                  fontSize: 12.5,
+                  color: m.role === 'error' ? 'var(--red)' : 'var(--text)',
+                  lineHeight: 1.65,
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+
+            {loading && (
+              <div style={{ display: 'flex', gap: 10, animation: 'fade-in 0.25s ease forwards' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--indigo-dim)', border: '1px solid rgba(129,140,248,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--indigo)' }}>
+                  <Scale size={13} />
+                </div>
+                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '4px 12px 12px 12px', padding: '10px 14px', display: 'flex', gap: 4, alignItems: 'center' }}>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--indigo)', display: 'inline-block', animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input */}
+          <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && ask()}
+              placeholder="Ask a compliance or regulatory question..."
               style={{
-                padding: '11px 20px', borderRadius: 10, border: 'none',
-                background: queryLoading ? '#a5b4fc' : '#6366f1',
-                color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 7,
-                boxShadow: '0 4px 12px rgba(99,102,241,0.3)'
+                flex: 1, background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '9px 13px', color: 'var(--text)',
+                fontSize: 13, outline: 'none',
               }}
-            >
-              {queryLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
-              Ask
+            />
+            <button onClick={() => ask()} disabled={loading || !input.trim()} style={{
+              width: 38, height: 38,
+              background: input.trim() ? 'var(--indigo)' : 'var(--bg4)',
+              border: 'none', borderRadius: 8, color: '#fff',
+              cursor: input.trim() ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s', flexShrink: 0,
+            }}>
+              <Send size={14} />
             </button>
           </div>
-
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {["What are the SAR filing requirements?", "When must a CTR be filed?", "What is OFAC screening?", "Explain KYC under CIP"].map(q => (
-              <button key={q} onClick={() => setQuestion(q)} style={{
-                fontSize: 11, fontWeight: 500, color: '#6366f1', background: '#eef2ff',
-                border: 'none', borderRadius: 99, padding: '4px 12px', cursor: 'pointer'
-              }}>{q}</button>
-            ))}
-          </div>
-
-          {queryResult && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: statusCfg[queryResult.status]?.bg || '#f8fafc', color: statusCfg[queryResult.status]?.color || '#64748b' }}>
-                  {statusCfg[queryResult.status]?.label || 'Unknown'}
-                </span>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: '#eef2ff', color: '#6366f1' }}>LLaMA 3.3 70B via Groq</span>
-              </div>
-              <div style={{ background: '#f8fafc', borderRadius: 12, padding: '18px 20px', border: '1px solid #f1f5f9' }}>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.85, whiteSpace: 'pre-line' }}>{queryResult.answer}</p>
-              </div>
-            </div>
-          )}
         </div>
 
-        <div style={card}>
-          <SectionTitle>Check Transaction Compliance</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}>
-            <Field label="Amount ($)">
-              <Input type="number" value={txn.amount} onChange={e => setTxn(t => ({ ...t, amount: e.target.value }))} placeholder="e.g. 15000" />
-            </Field>
-            <Field label="Transaction Type">
-              <Select value={txn.type} onChange={e => setTxn(t => ({ ...t, type: e.target.value }))}>
-                <option value="digital">Digital</option>
-                <option value="cash">Cash</option>
-              </Select>
-            </Field>
-            <Field label="Foreign Transaction">
-              <Select value={txn.is_foreign} onChange={e => setTxn(t => ({ ...t, is_foreign: e.target.value === 'true' }))}>
-                <option value="false">No</option>
-                <option value="true">Yes</option>
-              </Select>
-            </Field>
-            <button
-              onClick={handleTxn}
-              disabled={txnLoading}
-              style={{
-                padding: '10px 20px', borderRadius: 10, border: 'none',
-                background: txnLoading ? '#a5b4fc' : '#6366f1',
-                color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap',
-                boxShadow: '0 4px 12px rgba(99,102,241,0.3)', marginBottom: 16
-              }}
-            >
-              {txnLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <FileCheck size={14} />}
-              Check
-            </button>
-          </div>
+        {/* Right Panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          {txnResult && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-              {txnResult.flags.map((flag, i) => {
-                const c = severityCfg[flag.severity] || severityCfg.none;
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12, background: c.bg, border: `1px solid ${c.border}` }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: c.color, marginBottom: 3 }}>{flag.rule}</p>
-                      <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{flag.detail}</p>
+          {/* Transaction Checker */}
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle size={14} color="var(--green)" strokeWidth={2} />
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13 }}>Screen Transaction</span>
+            </div>
+            <div style={{ padding: 16 }}>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 5 }}>Amount ($)</div>
+                <input
+                  type="number"
+                  value={txForm.amount}
+                  onChange={e => setTxForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder="e.g. 15000"
+                  style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--mono)' }}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 5 }}>Type</div>
+                  <select value={txForm.type} onChange={e => setTxForm(f => ({ ...f, type: e.target.value }))} style={selectStyle}>
+                    <option value="wire">Wire</option>
+                    <option value="cash">Cash</option>
+                    <option value="ach">ACH</option>
+                    <option value="check">Check</option>
+                    <option value="digital">Digital</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 5 }}>Foreign</div>
+                  <select value={txForm.foreign} onChange={e => setTxForm(f => ({ ...f, foreign: e.target.value }))} style={selectStyle}>
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+              </div>
+              <button onClick={checkTx} disabled={txLoading || !txForm.amount} style={{
+                width: '100%', padding: '9px',
+                background: txForm.amount ? 'var(--green)' : 'var(--bg4)',
+                color: txForm.amount ? '#000' : 'var(--text3)',
+                border: 'none', borderRadius: 7,
+                fontWeight: 600, fontSize: 12.5,
+                cursor: txForm.amount ? 'pointer' : 'not-allowed',
+                fontFamily: 'var(--font-display)', transition: 'all 0.15s',
+              }}>
+                {txLoading ? 'Checking...' : 'Screen Transaction'}
+              </button>
+
+              {txResult && (
+                <div style={{ marginTop: 12, animation: 'fade-in 0.3s ease forwards' }}>
+                  {txResult.error ? (
+                    <div style={{ background: 'var(--red-dim)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <XCircle size={13} color="var(--red)" />
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--red)' }}>Error</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text2)' }}>{txResult.error}</div>
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: '#fff', color: c.color, border: `1px solid ${c.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{flag.severity}</span>
-                  </div>
-                );
-              })}
-              {txnResult.compliance_guidance && (
-                <div style={{ background: '#f8fafc', borderRadius: 12, padding: '18px 20px', border: '1px solid #f1f5f9', marginTop: 4 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Regulatory Guidance</p>
-                  <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.85 }}>{txnResult.compliance_guidance}</p>
+                  ) : (
+                    <>
+                      {/* Status banner */}
+                      <div style={{
+                        background: txResult.status === 'compliant' ? 'var(--green-dim)' : 'var(--amber-dim)',
+                        border: `1px solid ${txResult.status === 'compliant' ? 'rgba(52,211,153,0.2)' : 'rgba(251,191,36,0.2)'}`,
+                        borderRadius: 8, padding: '9px 12px',
+                        display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8,
+                      }}>
+                        {txResult.status === 'compliant'
+                          ? <CheckCircle size={13} color="var(--green)" />
+                          : <AlertTriangle size={13} color="var(--amber)" />}
+                        <span style={{ fontSize: 12, fontWeight: 600, color: txResult.status === 'compliant' ? 'var(--green)' : 'var(--amber)' }}>
+                          {txResult.status === 'compliant' ? 'Compliant' : txResult.status === 'requires_action' ? 'Action Required' : 'Review Required'}
+                        </span>
+                        <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
+                          ${Number(txResult.transaction?.amount || 0).toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Flags */}
+                      {txResult.flags?.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          {txResult.flags.map((f, i) => (
+                            <div key={i} style={{
+                              background: 'var(--bg3)', border: '1px solid var(--border)',
+                              borderLeft: `3px solid ${f.severity === 'high' ? 'var(--red)' : f.severity === 'medium' ? 'var(--amber)' : 'var(--cyan)'}`,
+                              borderRadius: 6, padding: '8px 10px', marginBottom: 5,
+                            }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{f.rule}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5 }}>{f.detail}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Guidance */}
+                      {txResult.compliance_guidance && (
+                        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 7, padding: '9px 11px' }}>
+                          <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 5 }}>AI Guidance</div>
+                          <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.6 }}>
+                            {txResult.compliance_guidance.length > 300
+                              ? txResult.compliance_guidance.slice(0, 300) + '…'
+                              : txResult.compliance_guidance}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
+
+          {/* Regulatory Thresholds */}
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>Regulatory Thresholds</div>
+            {[
+              { label: 'CTR Filing',     value: '$10,000', note: 'Cash transactions' },
+              { label: 'SAR Required',   value: '$5,000',  note: 'Suspicious activity' },
+              { label: 'FBAR Threshold', value: '$10,000', note: 'Foreign accounts' },
+              { label: 'Wire Record',    value: '$3,000',  note: 'BSA retention' },
+            ].map(({ label, value, note }) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500 }}>{label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text3)' }}>{note}</div>
+                </div>
+                <div style={{ fontSize: 13, fontFamily: 'var(--mono)', color: 'var(--amber)', fontWeight: 500, alignSelf: 'center' }}>{value}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </PageLayout>

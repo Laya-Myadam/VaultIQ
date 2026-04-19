@@ -2,7 +2,8 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 
-const FRAUD_URL = "http://localhost:8001";
+const FRAUD_URL = process.env.FRAUD_URL || "http://localhost:8001";
+
 
 router.post("/analyze", async (req, res) => {
   try {
