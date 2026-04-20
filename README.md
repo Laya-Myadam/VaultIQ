@@ -2,7 +2,7 @@
 
 > Full-stack AI platform for financial institutions — fraud detection, credit underwriting, AML screening, regulatory compliance, risk stress testing, document intelligence, and automated report generation.
 
-**Live Gateway:** `https://vaultiq-gateway-934314486311.us-central1.run.app`
+**Live Gateway:** https://vaultiq-frontend-934314486311.us-central1.run.app/
 
 ---
 
