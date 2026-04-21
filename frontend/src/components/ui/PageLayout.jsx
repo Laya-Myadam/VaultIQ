@@ -8,13 +8,14 @@ export default function PageLayout({ title, subtitle, children }) {
       flexDirection: 'column',
       overflow: 'hidden',
       height: '100%',
-      background: 'var(--bg)',
+      background: 'transparent',
     }}>
       <Topbar title={title} subtitle={subtitle} />
       <main style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '22px 26px 32px',
+        padding: '24px 28px 36px',
+        background: 'transparent',
       }}>
         {children}
       </main>

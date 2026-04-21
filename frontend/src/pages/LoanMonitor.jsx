@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TrendingDown, AlertTriangle, CheckCircle, Zap, Plus, Trash2 } from 'lucide-react';
 import PageLayout from '../components/ui/PageLayout';
 import { monitorLoans } from '../services/api';
+import { MOCK_LOANS_PORTFOLIO, MOCK_LOANS, MOCK_LOANS_RESULT } from '../data/mockBank';
 
 const LOAN_TYPES = ['Mortgage', 'Auto', 'Personal', 'SME', 'Commercial Real Estate', 'Trade Finance'];
 
@@ -11,10 +12,10 @@ const lbl = { fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing
 const BLANK_LOAN = { borrower: '', loan_type: 'Mortgage', outstanding: '', days_past_due: '', collateral_value: '' };
 
 export default function LoanMonitor() {
-  const [portfolio, setPortfolio] = useState({ total_outstanding: '', num_active_loans: '', avg_days_past_due: '', npl_ratio: '', provision_coverage: '', sector_concentration: '' });
-  const [loans, setLoans] = useState([{ ...BLANK_LOAN }]);
+  const [portfolio, setPortfolio] = useState(MOCK_LOANS_PORTFOLIO);
+  const [loans, setLoans] = useState(MOCK_LOANS);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(MOCK_LOANS_RESULT);
 
   const setPort = (k, v) => setPortfolio(p => ({ ...p, [k]: v }));
   const setLoan = (i, k, v) => setLoans(ls => ls.map((l, idx) => idx === i ? { ...l, [k]: v } : l));

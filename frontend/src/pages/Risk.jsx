@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Activity, Zap, TrendingDown, AlertTriangle, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 import PageLayout from '../components/ui/PageLayout';
 import { analyzeRisk } from '../services/api';
+import { MOCK_RISK_FORM, MOCK_RISK_RESULT } from '../data/mockBank';
 
 const Field = ({ label, hint, children }) => (
   <div style={{ marginBottom: 11 }}>
@@ -110,10 +111,10 @@ const StressCard = ({ data, index }) => {
 };
 
 export default function Risk() {
-  const [form, setForm] = useState(Object.fromEntries(FIELDS.map(f => [f.key, ''])));
+  const [form, setForm] = useState({ ...Object.fromEntries(FIELDS.map(f => [f.key, ''])), ...MOCK_RISK_FORM });
   const [focused, setFocused] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(MOCK_RISK_RESULT);
   const [error, setError] = useState(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Shield, Zap, AlertTriangle, CheckCircle, XCircle, ChevronRight, BarChart2, Clock, MapPin, Hash } from 'lucide-react';
 import PageLayout from '../components/ui/PageLayout';
 import { analyzeFraud } from '../services/api';
+import { MOCK_FRAUD_FORM, MOCK_FRAUD_RESULT } from '../data/mockBank';
 
 const Field = ({ label, hint, children }) => (
   <div style={{ marginBottom: 14 }}>
@@ -112,14 +113,10 @@ const Factor = ({ label, impact, direction }) => (
 );
 
 export default function Fraud() {
-  const [form, setForm] = useState({
-    amount: '185000', hour: '2', tx24h: '18',
-    avgAmount: '3000', distance: '450',
-    foreign: '0', sameCity: '1',
-  });
+  const [form, setForm] = useState(MOCK_FRAUD_FORM);
   const [focused, setFocused] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(MOCK_FRAUD_RESULT);
   const [error, setError] = useState(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));

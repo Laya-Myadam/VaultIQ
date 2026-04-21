@@ -1,174 +1,132 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, ShieldAlert, CreditCard, Scale,
-  Activity, FileText, Settings, LogOut, Zap,
-  ScanSearch, FileBarChart2, Landmark
+  LayoutDashboard, ShieldAlert, CreditCard, Scale, Activity, FileText,
+  Settings, LogOut, Zap, ScanSearch, FileBarChart2, Landmark,
+  Users, BarChart2, Package, Cpu, TrendingUp,
 } from 'lucide-react';
 
 const GROUPS = [
-  [
-    { to: '/',           icon: LayoutDashboard, label: 'Overview'      },
-    { to: '/fraud',      icon: ShieldAlert,     label: 'Fraud Intel'   },
-  ],
-  [
-    { to: '/credit',     icon: CreditCard,      label: 'Credit'        },
-    { to: '/compliance', icon: Scale,           label: 'Compliance'    },
-    { to: '/risk',       icon: Activity,        label: 'Risk'          },
-    { to: '/loans',      icon: Landmark,        label: 'Loan Monitor'  },
-  ],
-  [
-    { to: '/documents',  icon: FileText,        label: 'Doc AI'        },
-    { to: '/aml',        icon: ScanSearch,      label: 'AML Intel'     },
-    { to: '/reports',    icon: FileBarChart2,   label: 'Report Studio' },
-  ],
+  { label: 'Core', items: [
+    { to: '/',      icon: LayoutDashboard, label: 'Overview'    },
+    { to: '/fraud', icon: ShieldAlert,     label: 'Fraud Intel' },
+  ]},
+  { label: 'Risk & Lending', items: [
+    { to: '/credit-suite', icon: CreditCard, label: 'Credit Suite'  },
+    { to: '/risk',         icon: Activity,   label: 'Risk'          },
+    { to: '/loans',        icon: Landmark,   label: 'Loan Monitor'  },
+    { to: '/treasury',     icon: TrendingUp, label: 'Treasury'      },
+  ]},
+  { label: 'Compliance', items: [
+    { to: '/compliance-hub', icon: Scale,     label: 'Compliance Hub' },
+    { to: '/aml',            icon: ScanSearch, label: 'AML Intel'     },
+    { to: '/model-risk',     icon: Cpu,        label: 'Model Risk'    },
+  ]},
+  { label: 'Intelligence', items: [
+    { to: '/customer-intel', icon: Users,    label: 'Customer Intel' },
+    { to: '/benchmarking',   icon: BarChart2, label: 'Benchmarking'  },
+    { to: '/risk-assets',    icon: Package,  label: 'Risk Assets'   },
+  ]},
+  { label: 'Tools', items: [
+    { to: '/reports',   icon: FileBarChart2, label: 'Report Studio' },
+    { to: '/documents', icon: FileText,      label: 'Doc AI'        },
+  ]},
 ];
 
 function NavItem({ to, icon: Icon, label }) {
-  const [hovered, setHovered] = useState(false);
+  const [hov, setHov] = useState(false);
   return (
-    <div style={{ position: 'relative', marginBottom: 2 }}>
-      <NavLink
-        to={to}
-        end={to === '/'}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={({ isActive }) => ({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 42,
-          height: 42,
-          borderRadius: 12,
-          textDecoration: 'none',
-          transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
-          background: isActive
-            ? 'linear-gradient(140deg, #3B82F6 0%, #2563EB 100%)'
-            : hovered ? 'rgba(37,99,235,0.07)' : 'transparent',
-          color: isActive ? '#fff' : hovered ? 'var(--cyan)' : 'var(--text3)',
-          boxShadow: isActive ? '0 4px 14px rgba(37,99,235,0.28)' : 'none',
-          transform: hovered && !isActive ? 'scale(1.08)' : 'scale(1)',
-        })}
-      >
-        <Icon size={17} strokeWidth={isActive => isActive ? 2.2 : 1.8} />
-      </NavLink>
-
-      {/* Floating label tooltip */}
-      {hovered && (
-        <div style={{
-          position: 'absolute',
-          left: 52,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: 'var(--text)',
-          color: '#fff',
-          fontSize: 11.5,
-          fontWeight: 500,
-          fontFamily: 'var(--font-display)',
-          letterSpacing: '0.15px',
-          padding: '5px 11px',
-          borderRadius: 8,
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none',
-          zIndex: 9999,
-          boxShadow: 'var(--shadow)',
-          animation: 'float-in 0.14s ease forwards',
-        }}>
-          {label}
-          <span style={{
-            position: 'absolute',
-            left: -5,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 0,
-            height: 0,
-            borderTop: '5px solid transparent',
-            borderBottom: '5px solid transparent',
-            borderRight: '5px solid var(--text)',
-          }} />
-        </div>
-      )}
-    </div>
+    <NavLink to={to} end={to === '/'}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={({ isActive }) => ({
+        display: 'flex', alignItems: 'center', gap: 9,
+        padding: '7px 11px', borderRadius: 10,
+        textDecoration: 'none', marginBottom: 1,
+        transition: 'all 0.17s cubic-bezier(.4,0,.2,1)',
+        fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+        letterSpacing: '-0.1px',
+        background: isActive
+          ? 'linear-gradient(135deg,#5B73F2 0%,#4152DC 100%)'
+          : hov ? 'rgba(79,98,232,0.08)' : 'transparent',
+        color: isActive ? '#fff' : hov ? '#4F62E8' : '#5E6E9E',
+        boxShadow: isActive
+          ? '0 4px 14px rgba(79,98,232,0.28), inset 0 1px 0 rgba(255,255,255,0.20)'
+          : 'none',
+      })}>
+      <Icon size={14} strokeWidth={1.9} style={{ flexShrink: 0 }} />
+      {label}
+    </NavLink>
   );
 }
 
 export default function Sidebar() {
   const navigate = useNavigate();
-
-  const logout = () => {
-    localStorage.removeItem('vaultiq_auth');
-    navigate('/login', { replace: true });
-  };
+  const logout = () => { localStorage.removeItem('vaultiq_auth'); navigate('/login', { replace: true }); };
 
   return (
     <aside style={{
-      width: 68,
-      minWidth: 68,
-      background: '#FFFFFF',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      height: '100vh',
-      padding: '18px 0 16px',
-      position: 'relative',
-      zIndex: 100,
-      boxShadow: '2px 0 16px rgba(11,29,66,0.04)',
+      width: 220, minWidth: 220,
+      background: 'rgba(255,255,255,0.82)',
+      backdropFilter: 'blur(28px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+      borderRight: '1px solid rgba(255,255,255,0.90)',
+      boxShadow: '4px 0 28px rgba(79,98,232,0.07)',
+      display: 'flex', flexDirection: 'column',
+      height: '100vh', padding: '18px 10px 14px',
+      position: 'relative', zIndex: 100,
     }}>
 
-      {/* Logo mark */}
-      <div style={{
-        width: 38,
-        height: 38,
-        background: 'linear-gradient(140deg, #3B82F6 0%, #1D4ED8 100%)',
-        borderRadius: 11,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 26,
-        boxShadow: '0 4px 14px rgba(37,99,235,0.32)',
-        flexShrink: 0,
-      }}>
-        <Zap size={17} color="#fff" strokeWidth={2.5} />
+      {/* Brand */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:24, paddingLeft:3 }}>
+        <div style={{
+          width:36, height:36, flexShrink:0,
+          background:'linear-gradient(140deg,#6474F0,#4152D8)',
+          borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow:'0 4px 14px rgba(79,98,232,0.34), inset 0 1px 0 rgba(255,255,255,0.25)',
+        }}>
+          <Zap size={15} color="#fff" strokeWidth={2.5} />
+        </div>
+        <div>
+          <div style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:16.5, letterSpacing:'-0.5px', color:'#0C1128', lineHeight:1 }}>
+            Vault<span style={{ background:'linear-gradient(135deg,#5B73F2,#8B5CF6)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>IQ</span>
+          </div>
+          <div style={{ fontSize:8, color:'#A0ABCC', letterSpacing:'1.2px', marginTop:4, fontWeight:600, textTransform:'uppercase', fontFamily:'var(--font)' }}>
+            AI Banking OS
+          </div>
+        </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        {GROUPS.map((group, gi) => (
-          <div key={gi} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {group.map(item => <NavItem key={item.to} {...item} />)}
-            {gi < GROUPS.length - 1 && (
-              <div style={{
-                width: 22,
-                height: 1,
-                background: 'linear-gradient(90deg, transparent, var(--border), transparent)',
-                margin: '10px 0',
-              }} />
-            )}
+      <nav style={{ flex:1, overflowY:'auto' }}>
+        {GROUPS.map((g, gi) => (
+          <div key={gi} style={{ marginBottom:4 }}>
+            <div style={{ fontSize:8.5, fontWeight:700, color:'#C0CADF', letterSpacing:'0.8px', textTransform:'uppercase', padding: gi===0 ? '0 6px 5px' : '10px 6px 5px', fontFamily:'var(--font)' }}>
+              {g.label}
+            </div>
+            {g.items.map(i => <NavItem key={i.to} {...i} />)}
           </div>
         ))}
       </nav>
 
-      {/* Bottom actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <div style={{ height:1, background:'linear-gradient(90deg,transparent,rgba(79,98,232,0.12),transparent)', margin:'8px 4px' }} />
+
+      <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
         {[
-          { icon: Settings, title: 'Settings', to: '/settings' },
-          { icon: LogOut,   title: 'Logout',   red: true },
-        ].map(({ icon: Icon, title, to, red }) => (
-          <button key={title} title={title}
-            onClick={() => to ? navigate(to) : logout()}
-            style={{
-              width: 42, height: 42,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'transparent', border: 'none', borderRadius: 12,
-              cursor: 'pointer',
-              color: red ? 'var(--red)' : 'var(--text3)',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = red ? 'var(--red-dim)' : 'var(--bg3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          { icon:Settings, label:'Settings', to:'/settings' },
+          { icon:LogOut,   label:'Sign Out',  red:true },
+        ].map(({ icon:Icon, label, to, red }) => (
+          <button key={label} onClick={() => to ? navigate(to) : logout()} style={{
+            display:'flex', alignItems:'center', gap:9, padding:'7px 11px',
+            borderRadius:10, border:'none', background:'transparent', cursor:'pointer',
+            color: red ? '#E53E3E' : '#5E6E9E', transition:'all 0.17s',
+            fontFamily:'var(--font)', fontSize:13, fontWeight:500,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = red ? 'rgba(229,62,62,0.08)' : 'rgba(79,98,232,0.08)'; e.currentTarget.style.color = red ? '#C53030' : '#4F62E8'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = red ? '#E53E3E' : '#5E6E9E'; }}
           >
-            <Icon size={17} strokeWidth={1.75} />
+            <Icon size={14} strokeWidth={1.9} style={{ flexShrink:0 }} />
+            {label}
           </button>
         ))}
       </div>

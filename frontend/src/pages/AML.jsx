@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Search, AlertTriangle, CheckCircle, XCircle, Eye, User, Zap } from 'lucide-react';
 import PageLayout from '../components/ui/PageLayout';
 import { analyzeNarrative, screenCustomer } from '../services/api';
+import { MOCK_AML_NARRATIVE, MOCK_AML_RESULT } from '../data/mockBank';
 
 const Tab = ({ label, active, onClick }) => (
   <button onClick={onClick} style={{
@@ -29,8 +30,8 @@ const lbl = { fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacin
 export default function AML() {
   const [tab, setTab] = useState('narrative');
 
-  const [narrative, setNarrative] = useState('');
-  const [nResult, setNResult] = useState(null);
+  const [narrative, setNarrative] = useState(MOCK_AML_NARRATIVE);
+  const [nResult, setNResult] = useState(MOCK_AML_RESULT);
   const [nLoading, setNLoading] = useState(false);
 
   const [cust, setCust] = useState({ name: '', dob: '', country: '', occupation: '', account_age_months: '' });

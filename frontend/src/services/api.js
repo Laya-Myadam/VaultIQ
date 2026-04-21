@@ -143,6 +143,78 @@ export async function monitorLoans({ portfolio, loans }) {
   });
 }
 
+// ─── Customer 360 ──────────────────────────────────────────────────────────
+export async function profileCustomer(payload) {
+  const ctx = Object.entries(payload).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are a bank analyst AI. Create a Customer 360 profile and return JSON ONLY with fields: risk_level ("HIGH"/"MEDIUM"/"LOW"), risk_score (0-100 integer), credit_grade ("A"/"B"/"C"/"D"/"F"), kyc_status ("VERIFIED"/"PENDING"/"FAILED"), pep_match (boolean), sanctions_match (boolean), product_holdings (array of strings like "Checking","Mortgage"), behavioral_flags (array of strings), lifetime_value (number, $K estimated), recommended_due_diligence (string), summary (string).\n\nCUSTOMER: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { risk_level: 'MEDIUM', risk_score: 50, product_holdings: [], behavioral_flags: [], summary: data.answer });
+}
+
+// ─── Network Graph ─────────────────────────────────────────────────────────
+export async function analyzeNetwork(payload) {
+  const ctx = `Account ID: ${payload.account_id}, description: ${payload.description || 'not provided'}, transaction count: ${payload.tx_count || 'unknown'}, time period: ${payload.period || 'last 90 days'}`;
+  const question = `You are a financial crime analyst AI. Map the transaction network for this account and return JSON ONLY with fields: risk_score (0-100 integer), flags (array of AML typology strings), nodes (array of exactly 7 objects each with {id: string, label: string, type: "account"|"shell"|"merchant"|"individual", risk: "HIGH"|"MEDIUM"|"LOW", amount: number}), edges (array of objects {from: string (must match a node id), to: string (must match a node id), label: string, suspicious: boolean}), summary (string). The first node in the nodes array must have id matching ${payload.account_id || 'ACC-001'} and be the central queried account.\n\nACCOUNT: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { risk_score: 50, flags: [], nodes: [], edges: [], summary: data.answer });
+}
+
+// ─── Interest Rate Risk ────────────────────────────────────────────────────
+export async function analyzeInterestRate(payload) {
+  const ctx = Object.entries(payload).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are an ALM specialist AI. Analyze interest rate risk and return JSON ONLY with fields: nim_current (number, %), nim_stressed (number, % under +200bps shock), duration_gap (number, years), repricing_risk ("HIGH"/"MEDIUM"/"LOW"), rate_sensitivity (string), earnings_at_risk (number, $M), economic_value_at_risk (number, $M), scenarios (array of {shock: string, nim_impact: number, commentary: string}), recommendations (array of strings), summary (string).\n\nDATA: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { repricing_risk: 'MEDIUM', scenarios: [], recommendations: [], summary: data.answer });
+}
+
+// ─── LCR ───────────────────────────────────────────────────────────────────
+export async function analyzeLCR(payload) {
+  const ctx = Object.entries(payload).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are a Basel III liquidity specialist AI. Calculate the Liquidity Coverage Ratio and return JSON ONLY with fields: lcr_ratio (number, %), status ("COMPLIANT"/"AT_RISK"/"NON_COMPLIANT"), hqla_total (number, $M), net_outflows_30d (number, $M), buffer_surplus (number, $M, positive=surplus negative=shortfall), stress_lcr (number, %, under stress), breakdown (array of {component: string, amount: number, type: "inflow"|"outflow"|"hqla"}), recommendations (array of strings), summary (string).\n\nDATA: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { status: 'AT_RISK', breakdown: [], recommendations: [], summary: data.answer });
+}
+
+// ─── Chargeback Intelligence ────────────────────────────────────────────────
+export async function analyzeChargeback(payload) {
+  const ctx = Object.entries(payload).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are a payments dispute analyst AI. Analyze this chargeback/dispute and return JSON ONLY with fields: category ("FRAUD"/"FRIENDLY_FRAUD"/"MERCHANT_ERROR"/"PROCESSING_ERROR"), win_probability (0-100, bank's chance of winning dispute), recommended_action ("ACCEPT"/"DISPUTE"/"ESCALATE"), reason_code (string), reg_e_applicable (boolean), required_evidence (array of strings), timeline_days (integer), risk_indicators (array of strings), summary (string).\n\nDISPUTE: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { category: 'FRAUD', win_probability: 50, recommended_action: 'DISPUTE', required_evidence: [], risk_indicators: [], summary: data.answer });
+}
+
+// ─── DSCR Calculator ───────────────────────────────────────────────────────
+export async function calculateDSCR(payload) {
+  const ctx = Object.entries(payload).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are a commercial lending underwriter AI. Calculate DSCR and underwriting metrics, return JSON ONLY with fields: dscr (number, 2 decimals), dscr_rating ("STRONG"/"ADEQUATE"/"MARGINAL"/"INSUFFICIENT"), ltv (number, %), debt_yield (number, %), recommendation ("APPROVE"/"CONDITIONAL"/"DECLINE"), max_loan_amount (number, $M), loan_constant (number, %), conditions (array of strings), risks (array of strings), summary (string).\n\nLOAN DATA: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { dscr_rating: 'MARGINAL', recommendation: 'CONDITIONAL', conditions: [], risks: [], summary: data.answer });
+}
+
+// ─── Regulatory Tracker ────────────────────────────────────────────────────
+export async function trackRegulatory({ query }) {
+  const question = `You are a banking regulatory expert AI. Answer this regulatory query and return JSON ONLY with fields: regulations (array of {name: string, agency: string, effective_date: string, status: "ACTIVE"/"PROPOSED"/"PENDING", impact: "HIGH"/"MEDIUM"/"LOW", description: string}), action_items (array of strings), compliance_deadline (string or null), affected_departments (array of strings), answer (string, detailed plain-English explanation).\n\nQUERY: ${query}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { regulations: [], action_items: [], affected_departments: [], answer: data.answer });
+}
+
+// ─── Peer Benchmarking ─────────────────────────────────────────────────────
+export async function benchmarkBank(payload) {
+  const ctx = Object.entries(payload).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are a bank performance analyst AI. Benchmark this bank against industry peers (use FDIC call report data as reference) and return JSON ONLY with fields: overall_rank ("TOP_QUARTILE"/"SECOND_QUARTILE"/"THIRD_QUARTILE"/"BOTTOM_QUARTILE"), metrics (array of {name: string, bank_value: number, peer_median: number, top_quartile: number, unit: string, status: "ABOVE"/"AT"/"BELOW"}), strengths (array of strings), weaknesses (array of strings), peer_group (string), summary (string).\n\nBANK METRICS: ${ctx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { overall_rank: 'SECOND_QUARTILE', metrics: [], strengths: [], weaknesses: [], summary: data.answer });
+}
+
+// ─── Collateral Management ─────────────────────────────────────────────────
+export async function analyzeCollateral(payload) {
+  const assetsStr = (payload.assets || []).map(a => `${a.type}: $${a.value}M (haircut ${a.haircut}%, LTV ${a.ltv}%)`).join('; ') || 'none';
+  const portCtx = Object.entries(payload.portfolio || {}).filter(([, v]) => v).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const question = `You are a collateral management specialist AI. Analyze this collateral portfolio and return JSON ONLY with fields: total_collateral_value (number, $M), eligible_collateral (number, $M after haircuts), coverage_ratio (number, %), margin_call_risk ("HIGH"/"MEDIUM"/"LOW"), assets (array of {type: string, market_value: number, haircut_value: number, ltv: number, status: "ADEQUATE"/"AT_RISK"/"MARGIN_CALL"}), recommendations (array of strings), summary (string).\n\nCOLLATERAL: ${assetsStr}\nPORTFOLIO: ${portCtx}`;
+  const data = await post('/compliance/query', { question });
+  return tryParseJSON(data.answer, { margin_call_risk: 'MEDIUM', assets: [], recommendations: [], summary: data.answer });
+}
+
 // ─── Documents ─────────────────────────────────────────────────────────────
 export async function summarizeDocument(file) {
   const fd = new FormData();

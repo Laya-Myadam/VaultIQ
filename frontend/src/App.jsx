@@ -1,18 +1,23 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 
-import Sidebar     from './components/layout/Sidebar';
-import Dashboard   from './pages/Dashboard';
-import Fraud       from './pages/Fraud';
-import Credit      from './pages/Credit';
-import Compliance  from './pages/Compliance';
-import Risk        from './pages/Risk';
-import Documents   from './pages/Documents';
-import Login       from './pages/Login';
-import Reports     from './pages/Reports';
-import AML         from './pages/AML';
-import LoanMonitor from './pages/LoanMonitor';
-import Settings    from './pages/Settings';
+import Sidebar         from './components/layout/Sidebar';
+import Dashboard       from './pages/Dashboard';
+import Fraud           from './pages/Fraud';
+import CreditSuite     from './pages/CreditSuite';
+import Risk            from './pages/Risk';
+import LoanMonitor     from './pages/LoanMonitor';
+import Treasury        from './pages/Treasury';
+import ComplianceHub   from './pages/ComplianceHub';
+import AML             from './pages/AML';
+import ModelRisk       from './pages/ModelRisk';
+import CustomerIntel   from './pages/CustomerIntel';
+import Benchmarking    from './pages/Benchmarking';
+import RiskAssets      from './pages/RiskAssets';
+import Reports         from './pages/Reports';
+import Documents       from './pages/Documents';
+import Settings        from './pages/Settings';
+import Login           from './pages/Login';
 
 function isAuthed() {
   try {
@@ -27,20 +32,25 @@ function PrivateRoute({ children }) {
 
 function AppShell() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
       <Sidebar />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
         <Routes>
-          <Route path="/"           element={<Dashboard />} />
-          <Route path="/fraud"      element={<Fraud />} />
-          <Route path="/credit"     element={<Credit />} />
-          <Route path="/compliance" element={<Compliance />} />
-          <Route path="/risk"       element={<Risk />} />
-          <Route path="/documents"  element={<Documents />} />
-          <Route path="/reports"    element={<Reports />} />
-          <Route path="/aml"        element={<AML />} />
-          <Route path="/loans"      element={<LoanMonitor />} />
-          <Route path="/settings"   element={<Settings />} />
+          <Route path="/"               element={<Dashboard />} />
+          <Route path="/fraud"          element={<Fraud />} />
+          <Route path="/credit-suite"   element={<CreditSuite />} />
+          <Route path="/risk"           element={<Risk />} />
+          <Route path="/loans"          element={<LoanMonitor />} />
+          <Route path="/treasury"       element={<Treasury />} />
+          <Route path="/compliance-hub" element={<ComplianceHub />} />
+          <Route path="/aml"            element={<AML />} />
+          <Route path="/model-risk"     element={<ModelRisk />} />
+          <Route path="/customer-intel" element={<CustomerIntel />} />
+          <Route path="/benchmarking"   element={<Benchmarking />} />
+          <Route path="/risk-assets"    element={<RiskAssets />} />
+          <Route path="/reports"        element={<Reports />} />
+          <Route path="/documents"      element={<Documents />} />
+          <Route path="/settings"       element={<Settings />} />
         </Routes>
       </div>
     </div>
